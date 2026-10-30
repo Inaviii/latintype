@@ -27,8 +27,8 @@ A typing test can be pointed at any text. LatinType shows the scansion over the 
 
 ## Capabilities and Constraints
 
-- Static React and Vite site deployed to GitHub Pages at latintype.com, with Firestore for shared scores.
-- No accounts and no logging in. A student types a name only when saving a score, and it is remembered on that device. Names are labels and are not verified, so leaderboards run on the honour system.
+- Static React and Vite site deployed to GitHub Pages at latintype.com, with no backend.
+- No accounts and no logging in. Scores save automatically to the student's own browser and are never shared, so there are no public leaderboards.
 - No progression systems: no XP, levels, titles, badges, unlockable cosmetics, crowns, Elo, ranked play, win/loss records, or races against other players or ghosts.
 - Macrons and scansion marks must render accurately in every typeface offered, and letterforms must keep Latin vowels distinct, especially a and o.
 - Interface text must stay in one monospaced face so the ASCII art lines up. Only the Latin text changes with the font setting.

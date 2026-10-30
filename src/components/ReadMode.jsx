@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import DictionaryPopup from './DictionaryPopup';
 import { lookupWord } from '../lib/DictionaryService';
-import { Pane, toAsciiMark } from './ascii';
+import { Pane, Mark, Letter } from './ascii';
 import Select from './Select';
 import { useSettings } from '../contexts/SettingsContext';
 
@@ -76,9 +76,9 @@ export default function ReadMode() {
   const textContainerRef = useRef(null);
 
   // styling
-  const { fontFamily, fontSize, showScansion, setShowScansion } = useSettings();
+  const { fontFamily, font, fontSize, showScansion, setShowScansion } = useSettings();
   // reading is a page rather than one line in focus, so it stays a little smaller than typing
-  const readSize = Math.min(fontSize, 26);
+  const readSize = Math.min(fontSize, 26) * (font.scale ?? 1);
 
   // syntax highlighting
   const [syntaxMode, setSyntaxMode] = useState(false);
@@ -676,7 +676,7 @@ export default function ReadMode() {
                   onMouseLeave={stopDrawing}
                 />
 
-                <div className="relative z-0 text-ink" lang="la" style={{ fontSize: `${readSize}px`, fontFamily }}>
+                <div className="relative z-0 text-ink" lang="la" style={{ fontSize: `${readSize / 16}rem`, fontFamily }}>
                   {lines.map((lineObj, i) => (
                     <p key={i} className={`flex items-center py-1 ${i % 5 === 4 ? 'mb-4' : ''}`}>
                       <span className="mr-4 w-[4ch] shrink-0 select-none text-right font-mono text-xs text-dim">{lineRange.start + i}</span>
@@ -718,10 +718,10 @@ export default function ReadMode() {
                                   <span key={cIdx} className="verse-cell mt-3">
                                     {showScansion && symbol && symbol !== ' ' && (
                                       <span className="mark-sign" style={{ left: isDiphthong ? '100%' : '50%' }} aria-hidden="true">
-                                        {toAsciiMark(symbol)}
+                                        <Mark symbol={symbol} />
                                       </span>
                                     )}
-                                    <span>{char}</span>
+                                    <span className="relative"><Letter char={char} font={font} /></span>
                                   </span>
                                 );
                               })}

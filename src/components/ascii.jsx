@@ -37,11 +37,23 @@ export const Logo = () => (
   </h1>
 );
 
-// the data stores long and short as — and ∪; on screen they are plain - and u
-export const toAsciiMark = (symbol) => (symbol === '—' ? '-' : symbol === '∪' ? 'u' : symbol);
+// the data stores long and short as — and ∪; on screen they are ASCII art, three characters each
+export const Mark = ({ symbol }) => (symbol === '∪' ? '\\_/' : '---');
 
-export const linePattern = (scansion) =>
-  scansion ? [...scansion.join('').replace(/ /g, '')].map(toAsciiMark).join(' ') : '';
+export const LinePattern = ({ scansion }) => (
+  <span className="inline-flex gap-[1ch]">
+    {[...(scansion || []).join('').replace(/ /g, '')].map((symbol, i) => (
+      <span key={i}><Mark symbol={symbol} /></span>
+    ))}
+  </span>
+);
+
+// shortcut: a drawn macron copies as the plain vowel when selected; fine while only Doto needs it
+export const Letter = ({ char, font }) => {
+  const [base, accent] = char.normalize('NFD');
+  if (!font?.drawMacrons || accent !== '\u0304') return char;
+  return <>{base}<span className={`drawn-macron ${base === base.toUpperCase() ? 'cap' : ''}`} aria-hidden="true" /></>;
+};
 
 export function Overlay({ title, onClose, children }) {
   const panelRef = useRef(null);

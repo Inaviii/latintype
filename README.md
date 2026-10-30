@@ -8,7 +8,7 @@ Type and read real Latin, with the scansion shown over every line. Live at [lati
 - Read mode with scansion, part-of-speech colours, dictionary lookup, annotation, and PDF and LaTeX export
 - 21 authors, from Catullus to Virgil
 - Six colour palettes and a choice of fonts for the Latin
-- No accounts
+- No accounts and no backend: scores stay in your browser
 
 ## Running it
 

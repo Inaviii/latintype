@@ -10,7 +10,7 @@ A calm terminal session. The screen behaves like tmux: a logo, a tab row, panes 
 
 - Square corners, no shadows, no glow, no blur, no gradients, no emoji, no cards.
 - Frames use real ASCII characters (`+ - |`). Box-drawing characters are out because the web font does not line them up.
-- Long and short syllables show as `-` and `u`. The data stores `—` and `∪`, and `toAsciiMark` converts them.
+- Long syllables show as `---` and short syllables as `\_/`, both real text characters. The data stores `—` and `∪`, and the `Mark` component renders them.
 - Lowercase interface copy. Buttons read `[like this]`, using the `.btn` class.
 - Selected tabs and modes are inverted cells, using `.tab.on`.
 - Dropdowns use `Select`, never a native `<select>`, because option lists can't be styled. The list is an ASCII pane with `>` on the current choice.
@@ -34,9 +34,9 @@ Six palettes, all cycleable. Tokens are set on `:root[data-palette]` in `src/ind
 
 ## Type
 
-- Interface: JetBrains Mono at 14px, everywhere, so character art aligns.
-- Latin: the player's choice, set only on the verse. The default is JetBrains Mono. Options must keep a and o distinct and support macrons, so Syne Mono is out.
-- Typing size defaults to 32px and shrinks to fit the longest line. Reading caps at 26px.
+- Interface: JetBrains Mono everywhere, so character art aligns. It is 0.875rem, and the root size scales with the window (16px to 32px), so use rem and ch rather than px.
+- Latin: the player's choice, set only on the verse. The default is Doto, a dot-matrix face. Doto has no ō or ȳ, so the `Letter` component draws every macron in matching dots. Other options must keep a and o distinct and include macrons, so Syne Mono, Share Tech Mono, DotGothic16 and Sixtyfour are out.
+- Typing size defaults to 32px at the base scale, grows with the window, and shrinks to fit the longest line. Reading caps at 26px at the base scale.
 
 ## Screens
 
@@ -44,7 +44,7 @@ Six palettes, all cycleable. Tokens are set on `:root[data-palette]` in `src/ind
 - **Type:** selectors and modes, verse, then the scansion map and run panes, then the status bar.
 - **While typing:** menus and panes stay visible by default. The "hide menus" setting optionally hides everything except the verse and status bar, using `visibility` so the verse never jumps. Esc brings them back. Esc always releases the keyboard.
 - **Read:** selectors and view toggles, with the passage in a pane. Part-of-speech and annotation tools appear only when switched on.
-- **Scores:** a plain table with fixed columns, and tabs by mode.
+- **Scores:** the player's own best runs from this browser, in a plain table with fixed columns and tabs by mode.
 - **Overlays:** settings and dictionary use one centred pane over a dimmed page.
 
 ## Components

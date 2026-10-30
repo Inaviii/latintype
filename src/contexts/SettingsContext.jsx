@@ -3,7 +3,11 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 export const palettes = ['slate', 'graphite', 'bark', 'fjord', 'moss', 'proof'];
 
 // adv is the widest advance per em, used to fit long lines on screen
+// scale evens out faces whose letters are small for their size, like VT323
 export const fonts = [
+  // Doto has no ō or ȳ, so every macron is drawn to match
+  { name: "Doto", value: '"Doto", monospace', adv: 0.6, scale: 1.1, drawMacrons: true },
+  { name: "VT323", value: '"VT323", monospace', adv: 0.4, scale: 1.35 },
   { name: "JetBrains Mono", value: '"JetBrains Mono", monospace', adv: 0.6 },
   { name: "Fira Mono", value: '"Fira Mono", monospace', adv: 0.6 },
   { name: "IBM Plex Mono", value: '"IBM Plex Mono", monospace', adv: 0.6 },
@@ -32,7 +36,7 @@ export function SettingsProvider({ children }) {
   });
   const [volume, setVolume] = useState(() => { const v = localStorage.getItem('volume'); return v !== null ? parseFloat(v) : 0.2; });
   const [fontFamily, setFontFamily] = useState(() => {
-    const saved = localStorage.getItem('fontFamily');
+    const saved = localStorage.getItem('latinFont');
     return fonts.some(f => f.value === saved) ? saved : fonts[0].value;
   });
   const [fontSize, setFontSize] = useState(() => { const v = localStorage.getItem('fontSize'); return v !== null ? parseInt(v) : 32; });
@@ -48,7 +52,7 @@ export function SettingsProvider({ children }) {
     document.documentElement.dataset.palette = palette;
     localStorage.setItem('palette', palette);
     localStorage.setItem('volume', volume);
-    localStorage.setItem('fontFamily', fontFamily);
+    localStorage.setItem('latinFont', fontFamily);
     localStorage.setItem('fontSize', fontSize);
     localStorage.setItem('showScansion', showScansion);
     localStorage.setItem('cursorStyle', cursorStyle);

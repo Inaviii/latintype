@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { collection, addDoc, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import DictionaryPopup from './DictionaryPopup';
-import { Pane, linePattern, toAsciiMark } from './ascii';
+import { Pane, LinePattern, Mark, Letter } from './ascii';
 import Select from './Select';
 import { useSettings } from '../contexts/SettingsContext';
 import { useTypingEngine } from '../hooks/useTypingEngine';
+import { addScore } from '../lib/scores';
 
 const normalizeChar = (char) => char.normalize("NFD").replace(/[̀-ͯ]/g, "");
 
@@ -98,11 +97,8 @@ export default function TypingTest({ onFocusChange }) {
   // settings via context
   const { volume, fontFamily, font, fontSize, showScansion, setShowScansion, cursorStyle, focusMode } = useSettings();
 
-  // saving a score
-  const [playerName, setPlayerName] = useState(() => localStorage.getItem('latintype_name') || localStorage.getItem('latintype_ranked_name') || '');
-  const [scoreSaved, setScoreSaved] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveError, setSaveError] = useState('');
+  // false when the browser refused to store the finished run
+  const [saveFailed, setSaveFailed] = useState(false);
 
   // optional focus mode: menus go while typing, Esc brings them back
   const [showMenus, setShowMenus] = useState(false);
@@ -217,48 +213,26 @@ export default function TypingTest({ onFocusChange }) {
 
   const canSaveScore = testMode === 'passage' || testMode === 'time' || testMode === 'daily';
 
-  const saveScore = async () => {
-    const name = playerName.trim();
-    if (!name || isSaving || scoreSaved || stats.wpm === 0) return;
-    setIsSaving(true);
-    setSaveError('');
-    localStorage.setItem('latintype_name', name);
-    try {
-      if (testMode === 'daily') {
-        const dailyScore = Math.round(stats.wpm * Math.pow(stats.acc / 100, 1.5) * 10);
-        const scoreRef = doc(db, 'daily_leaderboards', laDate(), 'scores', name.toLowerCase());
-        const scoreSnap = await getDoc(scoreRef);
-        if (!scoreSnap.exists() || scoreSnap.data().score < dailyScore) {
-          await setDoc(scoreRef, { name, score: dailyScore, wpm: stats.wpm, acc: stats.acc, timestamp: serverTimestamp() });
-        }
-      } else {
-        await addDoc(collection(db, "scores"), {
-          name,
-          wpm: stats.wpm,
-          acc: stats.acc,
-          mode: testMode,
-          duration: testMode === 'time' ? timeLimit : null,
-          passage: testMode === 'passage' ? `${selectedAuthor} - ${selectedWork}` : null,
-          date: new Date().toISOString(),
-          timestamp: new Date()
-        });
-      }
-      setScoreSaved(true);
-    } catch (err) {
-      console.error(err);
-      setSaveError('could not save. check your connection and try again.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  // runs once per finished test, since resetting clears isFinished
+  useEffect(() => {
+    if (!isFinished || !canSaveScore || stats.wpm === 0) return;
+    const piece = libraryIndex?.[selectedAuthor]?.[selectedWork]?.find(p => p.id === selectedPieceId)?.piece;
+    const saved = addScore({
+      mode: testMode,
+      duration: testMode === 'time' ? timeLimit : null,
+      score: testMode === 'daily' ? Math.round(stats.wpm * Math.pow(stats.acc / 100, 1.5) * 10) : null,
+      wpm: stats.wpm,
+      acc: stats.acc,
+      text: [selectedAuthor, selectedWork, piece].filter(Boolean).join(' / '),
+    });
+    setSaveFailed(!saved);
+  }, [isFinished]);
 
   // reset engine helper
   const resetTest = (newLines = lines) => {
     resetEngine(newLines);
     setTimeRemaining(testMode === 'time' ? timeLimit : null);
-    setScoreSaved(false);
-    setIsSaving(false);
-    setSaveError('');
+    setSaveFailed(false);
     setShowMenus(false);
     if (inputRef.current) inputRef.current.focus();
   };
@@ -340,9 +314,10 @@ export default function TypingTest({ onFocusChange }) {
 
   const ready = !isAppLoading && Boolean(libraryIndex);
 
-  // fit the longest line to the screen rather than clipping it
-  useEffect(() => {
+  // fit the longest line to the screen rather than clipping it; measured before paint so it never flashes oversized
+  useLayoutEffect(() => {
     if (!stageRef.current) return;
+    setStageWidth(stageRef.current.clientWidth);
     const observer = new ResizeObserver(([entry]) => setStageWidth(entry.contentRect.width));
     observer.observe(stageRef.current);
     return () => observer.disconnect();
@@ -413,7 +388,8 @@ export default function TypingTest({ onFocusChange }) {
   const scrollOffset = safeActiveLineIndex > 0 ? safeActiveLineIndex - 1 : 0;
 
   const longestLine = lines.reduce((max, line) => Math.max(max, line.words.map(w => w.word).join(' ').length), 1);
-  const verseSize = Math.max(11, Math.min(fontSize, (stageWidth - 8) / ((longestLine + 2) * font.adv)));
+  const uiScale = parseFloat(getComputedStyle(document.documentElement).fontSize) / 16;
+  const verseSize = Math.max(11, Math.min(fontSize * uiScale * (font.scale ?? 1), (stageWidth - 8) / ((longestLine + 2) * font.adv)));
   const lineHeightPx = verseSize * 2.4;
   const viewportHeightPx = lineHeightPx * 4;
   const translateY = `-${scrollOffset * lineHeightPx}px`;
@@ -543,19 +519,10 @@ export default function TypingTest({ onFocusChange }) {
                   </dl>
 
                   {canSaveScore && stats.wpm > 0 && (
-                    <form className="flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); saveScore(); }}>
-                      <label htmlFor="score-name">name</label>
-                      <input
-                        id="score-name" className="field w-[22ch]" maxLength={20}
-                        value={playerName} onChange={(e) => setPlayerName(e.target.value)}
-                        disabled={scoreSaved || isSaving}
-                      />
-                      <button className="btn" type="submit" disabled={!playerName.trim() || scoreSaved || isSaving}>
-                        {isSaving ? 'saving...' : scoreSaved ? 'saved' : 'save score'}
-                      </button>
-                    </form>
+                    saveFailed
+                      ? <p className="text-mark" role="alert">could not save this score. your browser may be blocking storage.</p>
+                      : <p className="text-dim">saved to your scores.</p>
                   )}
-                  {saveError && <p className="mt-1 text-mark" role="alert">{saveError}</p>}
 
                   <div className="mt-4 flex flex-wrap gap-3">
                     <button className="btn" onClick={() => resetTest()}>restart</button>
@@ -568,7 +535,7 @@ export default function TypingTest({ onFocusChange }) {
         ) : (
           <div
             className="relative select-none overflow-hidden"
-            style={{ height: `${viewportHeightPx + 24}px`, fontSize: `${verseSize}px`, fontFamily, paddingTop: 24 }}
+            style={{ height: `calc(${viewportHeightPx}px + 1.5rem)`, fontSize: `${verseSize}px`, fontFamily, paddingTop: '1.5rem' }}
             lang="la"
           >
             {isFetchingAuthor && <p className="absolute inset-0 z-10 bg-paper font-mono text-sm">loading text...</p>}
@@ -629,10 +596,10 @@ export default function TypingTest({ onFocusChange }) {
                               <span key={cIdx} className={`verse-cell ${tone}`}>
                                 {showScansion && distance === 0 && symbol && symbol !== ' ' && (
                                   <span className="mark-sign" style={{ left: isDiphthong ? '100%' : '50%' }} aria-hidden="true">
-                                    {toAsciiMark(symbol)}
+                                    <Mark symbol={symbol} />
                                   </span>
                                 )}
-                                {char}
+                                <Letter char={char} font={font} />
                               </span>
                             );
                           })}
@@ -654,7 +621,7 @@ export default function TypingTest({ onFocusChange }) {
 
       <div className={`mt-4 grid gap-0 md:grid-cols-[2fr_1fr] ${focused ? 'invisible' : ''}`}>
         <Pane title="scansion map">
-          <div className="overflow-hidden py-1 whitespace-pre">
+          <div className="overflow-x-auto py-1 whitespace-pre">
             {!showScansion ? (
               <p>scansion is off.</p>
             ) : !hasScansion ? (
@@ -665,7 +632,7 @@ export default function TypingTest({ onFocusChange }) {
                   <span className={i === 0 ? 'text-ink font-semibold' : 'text-dim'}>
                     {i === 0 ? '> ' : '  '}{String(lineOffset + safeActiveLineIndex + i + 1).padStart(4)}
                   </span>
-                  <span className={i === 0 ? 'ml-[2ch] text-mark font-semibold' : 'ml-[2ch]'}>{linePattern(line.scansion)}</span>
+                  <span className={i === 0 ? 'ml-[2ch] text-mark font-semibold' : 'ml-[2ch]'}><LinePattern scansion={line.scansion} /></span>
                 </div>
               ))
             )}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Overlay } from './ascii';
+import { Overlay, Letter } from './ascii';
 import { useSettings, palettes, fonts, cursorStyles, volumes, cycle } from '../contexts/SettingsContext';
 
 function Row({ label, value, onPrev, onNext }) {
@@ -33,7 +33,7 @@ export default function SettingsPanel({ onClose }) {
       <Row label="key sound" value={volume === 0 ? 'off' : `${Math.round(volume * 100)}%`} onPrev={() => setVolume(cycle(volumes, volume, -1))} onNext={() => setVolume(cycle(volumes, volume))} />
       <Row label="scansion" value={showScansion ? 'on' : 'off'} onPrev={() => setShowScansion(!showScansion)} onNext={() => setShowScansion(!showScansion)} />
       <Row label="hide menus" value={focusMode ? 'while typing' : 'never'} onPrev={() => setFocusMode(!focusMode)} onNext={() => setFocusMode(!focusMode)} />
-      <p className="mt-3 text-ink" style={{ fontFamily, fontSize: 22 }}>Cui dōnō lepidum novum libellum</p>
+      <p className="mt-3 text-ink" style={{ fontFamily, fontSize: `${1.4 * (font.scale ?? 1)}rem` }}>{[...'Cui dōnō lepidum novum libellum'].map((char, i) => <span key={i} className="relative inline-block whitespace-pre"><Letter char={char} font={font} /></span>)}</p>
       <div className="mt-3 flex justify-end">
         <button className="btn" onClick={onClose}>esc close</button>
       </div>
